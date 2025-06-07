@@ -1,0 +1,148 @@
+import uuid
+from core.models import SoftDeleteQuery
+from database import db
+from datetime import datetime, date
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, Integer, Numeric, DateTime, Date, ForeignKey
+from sqlalchemy.orm import relationship
+
+from sqlalchemy.ext.declarative import DeclarativeMeta
+
+
+BaseModel: DeclarativeMeta = db.Model
+
+from sqlalchemy.sql import func
+
+
+class TimestampModel(BaseModel):
+    __abstract__ = True
+    created = db.Column(db.DateTime(timezone=True), nullable=False, default=func.now())
+    updated = db.Column(db.DateTime(timezone=True), onupdate=func.now())
+    deleted_at = db.Column(db.DateTime(timezone=True), index=True, nullable=True)
+
+    def soft_delete(obj):
+        obj.deleted_at = func.now()
+        db.session.commit()
+
+
+class Producto(TimestampModel):
+    __tablename__ = "producto"
+    query_class = SoftDeleteQuery
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    nombre = db.Column(db.String(100), nullable=False)
+    precio_venta = db.Column(db.Numeric(10, 2), nullable=False)
+
+    entradas = db.relationship("EntradaInventario", backref="producto", lazy=True)
+    inventario = db.relationship("Inventario", backref="producto", uselist=False)
+    detalleventa = db.relationship("DetalleVenta", backref="producto", lazy=True)
+
+
+class EntradaInventario(TimestampModel):
+    __tablename__ = "entrada_inventario"
+    query_class = SoftDeleteQuery
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    producto_id = db.Column(
+        UUID(as_uuid=True), db.ForeignKey("producto.id"), nullable=False
+    )
+    cantidad = db.Column(db.Integer, nullable=False)
+    precio_unitario = db.Column(db.Numeric(10, 2), nullable=False)
+    fecha = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class Inventario(TimestampModel):
+    __tablename__ = "inventario"
+    query_class = SoftDeleteQuery
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    producto_id = db.Column(
+        UUID(as_uuid=True), db.ForeignKey("producto.id"), nullable=False, unique=True
+    )
+    cantidad_disponible = db.Column(db.Integer, nullable=False, default=0)
+
+
+class Cliente(TimestampModel):
+    __tablename__ = "cliente"
+    query_class = SoftDeleteQuery
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    nombre = db.Column(db.String(100), nullable=False)
+    correo = db.Column(db.String(100))
+    telefono = db.Column(db.String(15))
+    fecha_nacimiento = db.Column(db.Date)
+
+    membresias_cliente = db.relationship(
+        "MembresiaCliente", backref="cliente", lazy=True
+    )
+    evaluaciones = db.relationship("EvaluacionCliente", backref="cliente", lazy=True)
+    ventas = db.relationship("Venta", backref="cliente", lazy=True)
+
+
+class Membresia(TimestampModel):
+    __tablename__ = "membresia"
+    query_class = SoftDeleteQuery
+    
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tipo = db.Column(db.String(100), nullable=False)
+    duracion_dias = db.Column(db.Integer, nullable=False)
+    precio_actual = db.Column(db.Numeric(10, 2), nullable=False)
+
+    clientes = db.relationship("MembresiaCliente", backref="membresia", lazy=True)
+    
+
+class MembresiaCliente(TimestampModel):
+    __tablename__ = "membresia_cliente"
+    query_class = SoftDeleteQuery
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    cliente_id = db.Column(
+        UUID(as_uuid=True), db.ForeignKey("cliente.id"), nullable=False
+    )
+    membresia_id = db.Column(
+        UUID(as_uuid=True), db.ForeignKey("membresia.id"), nullable=False
+    )
+    fecha_inicio = db.Column(db.Date, nullable=False)
+    fecha_fin = db.Column(db.Date, nullable=False)
+    precio_pagado = db.Column(db.Numeric(10, 2), nullable=False)
+
+
+class EvaluacionCliente(TimestampModel):
+    __tablename__ = "evaluacion_cliente"
+    query_class = SoftDeleteQuery
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    cliente_id = db.Column(
+        UUID(as_uuid=True), db.ForeignKey("cliente.id"), nullable=False
+    )
+    fecha = db.Column(db.Date, default=datetime.utcnow)
+    peso_kg = db.Column(db.Numeric(5, 2))
+    porcentaje_grasa = db.Column(db.Numeric(5, 2))
+    masa_muscular = db.Column(db.Numeric(5, 2))
+
+
+class Venta(TimestampModel):
+    __tablename__ = "venta"
+    query_class = SoftDeleteQuery
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    cliente_id = db.Column(
+        UUID(as_uuid=True), db.ForeignKey("cliente.id"), nullable=True
+    )
+    fecha = db.Column(db.DateTime, default=datetime.utcnow)
+    total = db.Column(db.Numeric(10, 2), default=0)
+
+    detalles = db.relationship("DetalleVenta", backref="venta", lazy=True)
+
+
+class DetalleVenta(TimestampModel):
+    __tablename__ = "detalle_venta"
+    query_class = SoftDeleteQuery
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    venta_id = db.Column(UUID(as_uuid=True), db.ForeignKey("venta.id"), nullable=False)
+    producto_id = db.Column(
+        UUID(as_uuid=True), db.ForeignKey("producto.id"), nullable=False
+    )
+    cantidad = db.Column(db.Integer, nullable=False)
+    precio_unitario = db.Column(db.Numeric(10, 2), nullable=False)
