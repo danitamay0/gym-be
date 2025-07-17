@@ -16,9 +16,9 @@ from sqlalchemy.sql import func
 
 class TimestampModel(BaseModel):
     __abstract__ = True
-    created = db.Column(db.DateTime(timezone=True), nullable=False, default=func.now())
-    updated = db.Column(db.DateTime(timezone=True), onupdate=func.now())
-    deleted_at = db.Column(db.DateTime(timezone=True), index=True, nullable=True)
+    created = db.Column(db.DateTime, nullable=False, default=func.now())
+    updated = db.Column(db.DateTime, onupdate=func.now())
+    deleted_at = db.Column(db.DateTime, index=True, nullable=True)
 
     def soft_delete(obj):
         obj.deleted_at = func.now()
@@ -34,7 +34,7 @@ class Producto(TimestampModel):
     precio_venta = db.Column(db.Numeric(10, 2), nullable=False)
 
     entradas = db.relationship("EntradaInventario", backref="producto", lazy=True)
-    inventario = db.relationship("Inventario", backref="producto", uselist=False)
+    inventario = db.relationship("Inventario", back_populates="producto", uselist=False)
     detalleventa = db.relationship("DetalleVenta", backref="producto", lazy=True)
 
 
@@ -60,6 +60,7 @@ class Inventario(TimestampModel):
         UUID(as_uuid=True), db.ForeignKey("producto.id"), nullable=False, unique=True
     )
     cantidad_disponible = db.Column(db.Integer, nullable=False, default=0)
+    producto = db.relationship("Producto", back_populates="inventario", lazy="joined")
 
 
 class Cliente(TimestampModel):
@@ -78,6 +79,12 @@ class Cliente(TimestampModel):
     evaluaciones = db.relationship("EvaluacionCliente", backref="cliente", lazy=True)
     ventas = db.relationship("Venta", backref="cliente", lazy=True)
 
+class Fingerprint(TimestampModel):
+    __tablename__ = 'fingerprints'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column( UUID(as_uuid=True), db.ForeignKey("cliente.id"), nullable=False, unique=True )
+    template_id = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Membresia(TimestampModel):
     __tablename__ = "membresia"
@@ -106,7 +113,10 @@ class MembresiaCliente(TimestampModel):
     fecha_fin = db.Column(db.Date, nullable=False)
     precio_pagado = db.Column(db.Numeric(10, 2), nullable=False)
 
-
+    @property
+    def active_membership(self):
+        current_date = datetime.utcnow().date()
+        return self.fecha_inicio <= current_date <= self.fecha_fin
 class EvaluacionCliente(TimestampModel):
     __tablename__ = "evaluacion_cliente"
     query_class = SoftDeleteQuery

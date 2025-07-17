@@ -7,17 +7,22 @@ from api.client.adaptor import get_clients
 from api.client.adaptor import add_client
 from api.client.schemas import ClientSchemaListResponse
 from api.client.schemas import ClientSchema
+from api.client.schemas import ClientQueryParams
 
 
 @registry.handles(
     rule="/clients", method="GET",
+    query_string_schema=ClientQueryParams,
     response_body_schema=ClientSchemaListResponse()
 )
 def clients():
     """
     get clients
     """
-    return get_clients()
+    query_params = flask_rebar.get_validated_args()
+    search = query_params.get("search")
+
+    return get_clients(search=search)
 
 
 @registry.handles(

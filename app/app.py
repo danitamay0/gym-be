@@ -17,6 +17,7 @@ def create_app():
     migrate.init_app(app)
 
     CORS(app, resources={r"/api/*": {"origins": "*"}})
+    
     return app
 
 
