@@ -1,0 +1,35 @@
+services:
+  web:
+    build: .
+    image: gym-be:latest
+    container_name: gym-be-web
+    environment:
+      SMART_STORE_ENV: docker
+      PYTHONPATH: /app
+      SMART_STORE_DB_SERVER_URL: postgresql+psycopg2://postgres:postgres@db:5432/
+      SMART_STORE_DB_NAME: gym_admin
+      # opcional:
+      # DISABLE_SWAGGER: "1"
+      # SECRET_KEY: "cambia-esto"
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  db:
+    image: postgres:16
+    container_name: gym-be-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: gym_admin
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # sin ports para no chocar con el Postgres del host
+    ports:
+      - "55432:5432" 
+    restart: unless-stopped
+
+volumes:
+  pgdata:

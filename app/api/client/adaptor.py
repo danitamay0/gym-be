@@ -33,6 +33,8 @@ def get_clients(search: str = None):
         last_membership = (
             MembresiaCliente.query
             .filter_by(cliente_id=cliente.id)
+            .filter(MembresiaCliente.active == True,
+             MembresiaCliente.deleted_at == None)
             .order_by(MembresiaCliente.created.desc())
             .first()
         )
