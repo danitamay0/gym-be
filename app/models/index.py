@@ -113,10 +113,14 @@ class MembresiaCliente(TimestampModel):
     fecha_fin = db.Column(db.Date, nullable=False)
     precio_pagado = db.Column(db.Numeric(10, 2), nullable=False)
     active = db.Column(db.Boolean, default=True)  # Campo para indicar si la membresía está activa 
+    metodo_pago_id = db.Column(UUID(as_uuid=True), db.ForeignKey("metodo_pago.id"), nullable=True)
+    metodo_pago = db.relationship("MetodoPago", back_populates="membresias")
 
     @property
     def active_membership(self):
         current_date = datetime.utcnow().date()
+        print(f"Checking active membership for {self.cliente_id} from {self.fecha_inicio} to {self.fecha_fin}")
+        print(f"Current date: {current_date}")
         return self.fecha_inicio <= current_date <= self.fecha_fin
 class EvaluacionCliente(TimestampModel):
     __tablename__ = "evaluacion_cliente"
@@ -144,7 +148,8 @@ class Venta(TimestampModel):
     total = db.Column(db.Numeric(10, 2), default=0)
 
     detalles = db.relationship("DetalleVenta", backref="venta", lazy=True)
-
+    metodo_pago_id = db.Column(UUID(as_uuid=True), db.ForeignKey("metodo_pago.id"), nullable=True)
+    metodo_pago = db.relationship("MetodoPago", back_populates="ventas")
 
 class DetalleVenta(TimestampModel):
     __tablename__ = "detalle_venta"
@@ -157,3 +162,14 @@ class DetalleVenta(TimestampModel):
     )
     cantidad = db.Column(db.Integer, nullable=False)
     precio_unitario = db.Column(db.Numeric(10, 2), nullable=False)
+
+
+class MetodoPago(TimestampModel):
+    __tablename__ = "metodo_pago"
+    query_class = SoftDeleteQuery
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tipo = db.Column(db.String(50), nullable=False)
+
+    ventas = db.relationship("Venta", back_populates="metodo_pago", lazy=True)
+    membresias = db.relationship("MembresiaCliente", back_populates="metodo_pago", lazy=True)

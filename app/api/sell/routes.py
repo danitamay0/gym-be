@@ -21,7 +21,7 @@ def get_sales():
 
     query = Venta.query.options(
         db.joinedload(Venta.detalles).joinedload(DetalleVenta.producto)
-    )
+    ).order_by(Venta.fecha.desc())
 
     if fecha_inicio:
         try:
@@ -52,6 +52,7 @@ def get_sales():
             "id": str(venta.id),
             "fecha": venta.fecha.isoformat(),
             "total": float(venta.total),
+            "metodo_pago": venta.metodo_pago.tipo if venta.metodo_pago else None,
             "detalles": [
                 {
                     "producto_id": str(detalle.producto_id),
@@ -75,6 +76,7 @@ def create_sale():
     data = request.get_json()
     items = data.get("items", [])
     cliente_id = data.get("cliente_id", None)
+    metodo_pago_id = data.get("metodo_pago_id", None)
 
     if not items:
         return jsonify({"error": "No hay productos en la venta"}), 400
@@ -86,6 +88,7 @@ def create_sale():
         venta = Venta(
             cliente_id=cliente_id,
             fecha=datetime.utcnow(),
+            metodo_pago_id=metodo_pago_id,
             total=total,
         )
         db.session.add(venta)
