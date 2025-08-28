@@ -34,7 +34,10 @@ def verify_fingerprint(template_id):
         return jsonify({"authorized": False}), 404
 
     # Revisa si alguna de las membresías está activa usando la propiedad
-    membresia_activa = any(m.active_membership for m in cliente.membresias_cliente)
+    membresia_activa = any(
+        m.active_membership and m.deleted_at is None  # Solo considerar membresías activas y no eliminadas
+        for m in cliente.membresias_cliente if m.active  # Solo considerar membresías activas
+    )
 
     if membresia_activa:
         return jsonify({"authorized": True, "user_id": str(cliente.id)})

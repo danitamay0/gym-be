@@ -112,6 +112,7 @@ class MembresiaCliente(TimestampModel):
     fecha_inicio = db.Column(db.Date, nullable=False)
     fecha_fin = db.Column(db.Date, nullable=False)
     precio_pagado = db.Column(db.Numeric(10, 2), nullable=False)
+    active = db.Column(db.Boolean, default=True)  # Campo para indicar si la membresía está activa 
 
     @property
     def active_membership(self):

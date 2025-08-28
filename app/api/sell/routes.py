@@ -181,7 +181,8 @@ def resumen_dashboard():
     membresias_query = (
         db.session.query(MembresiaCliente)
         .join(Membresia, Membresia.id == MembresiaCliente.membresia_id)
-        .filter(MembresiaCliente.created >= from_date, MembresiaCliente.created < to_date)
+        .filter(MembresiaCliente.created >= from_date, MembresiaCliente.created < to_date,
+           MembresiaCliente.deleted_at == None )
     )
     membresias = membresias_query.all()
 
