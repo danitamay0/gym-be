@@ -29,3 +29,4 @@ from api.esp32.routes import get_esp32_ip
 from api.sell.routes import create_sale
 from api.sell.routes import get_sales
 from api.sell.routes import resumen_dashboard
+from api.paymentmethod.routes import payment_methods
