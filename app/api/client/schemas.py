@@ -16,6 +16,16 @@ class ClientSchema(Schema):
     last_membership = fields.Nested(MembershipClientSchema, dump_only=True)
     membership = fields.Nested(MembershipClientSchema, required=False)
 
+class ClienFulltSchema(Schema):
+    id = fields.UUID()
+    nombre = fields.String(required=True)
+    correo = fields.String()
+    telefono = fields.String()
+    fecha_nacimiento = fields.Date()
+    last_membership = fields.Nested(MembershipClientSchema, dump_only=True)
+    membership = fields.Nested(MembershipClientSchema, required=False)
+    fingerprint = fields.String(dump_only=True)
+
 
 class ClientSchemaListResponse(DataEnvelopeResponse):
-    data = fields.Nested(ClientSchema, many=True)
+    data = fields.Nested(ClienFulltSchema, many=True)

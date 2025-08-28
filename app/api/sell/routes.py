@@ -184,8 +184,11 @@ def resumen_dashboard():
     membresias_query = (
         db.session.query(MembresiaCliente)
         .join(Membresia, Membresia.id == MembresiaCliente.membresia_id)
-        .filter(MembresiaCliente.created >= from_date, MembresiaCliente.created < to_date,
-           MembresiaCliente.deleted_at == None )
+        .filter(
+            MembresiaCliente.created >= from_date,
+            MembresiaCliente.created < to_date,
+            MembresiaCliente.deleted_at == None
+        )
     )
     membresias = membresias_query.all()
 
@@ -211,6 +214,33 @@ def resumen_dashboard():
         })
         total_membresias += r["subtotal"]
 
+    # ===== Nuevo: totales por método de pago (ventas + membresías) =====
+    totales_por_metodo = {}
+
+    # Ventas por método de pago (desde los detalles, consistente con subtotal de ventas)
+    for d in ventas:
+        monto = d.cantidad * float(d.precio_unitario)
+        metodo = (
+            (d.venta.metodo_pago.tipo if d.venta and d.venta.metodo_pago else None)
+            or "desconocido"
+        )
+        totales_por_metodo[metodo] = totales_por_metodo.get(metodo, 0) + monto
+
+    # Membresías por método de pago
+    for m in membresias:
+        monto = float(m.precio_pagado)
+        metodo = (
+            (m.metodo_pago.tipo if m.metodo_pago else None)
+            or "desconocido"
+        )
+        totales_por_metodo[metodo] = totales_por_metodo.get(metodo, 0) + monto
+
+    # Armamos el arreglo de detalles redondeado
+    detalles = [{"metodo_pago": k, "total": round(v)} for k, v in totales_por_metodo.items()]
+
+    # Asegurar que la suma de detalles coincida con total_global
+    total_global = sum(item["total"] for item in detalles)
+
     return jsonify({
         "ventas": {
             "resumen": resumen_ventas,
@@ -220,5 +250,6 @@ def resumen_dashboard():
             "resumen": resumen_membresias,
             "total": round(total_membresias),
         },
-        "total_global": round(total_ventas + total_membresias),
+        "detalles": detalles,  # <-- nuevo desglose por método de pago
+        "total_global": total_global,
     }), 200

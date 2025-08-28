@@ -14,6 +14,7 @@ class MembershipClientSchema(Schema):
 
     membresia = fields.Nested(MembershipSchema, dump_only=True)
     active_membership = fields.Boolean(dump_only=True)
+    metodo_pago_id = fields.UUID(required=False)
 
 
 class MembershipClientCreateSchema(Schema):

@@ -1,6 +1,6 @@
 
 
-from models.index import Cliente, MembresiaCliente
+from models.index import Cliente, MembresiaCliente, Fingerprint
 from database import db
 from sqlalchemy import or_
 
@@ -38,6 +38,9 @@ def get_clients(search: str = None):
             .order_by(MembresiaCliente.created.desc())
             .first()
         )
+
+        fingerprint = Fingerprint.query.filter_by(user_id=cliente.id).first()
+        cliente.fingerprint = fingerprint
 
         cliente.last_membership = last_membership
 
