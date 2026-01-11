@@ -8,28 +8,28 @@ services:
       PYTHONPATH: /app
       SMART_STORE_DB_SERVER_URL: postgresql+psycopg2://postgres:postgres@db:5432/
       SMART_STORE_DB_NAME: gym_admin
-      # opcional:
-      # DISABLE_SWAGGER: "1"
-      # SECRET_KEY: "cambia-esto"
+      TZ: "America/Bogota"  # Corregido: con dos puntos y espacio
     depends_on:
       - db
     ports:
       - "8000:8000"
-    restart: unless-stopped
+    restart: always
 
   db:
     image: postgres:16
     container_name: gym-be-db
+    # Agregamos este comando para que Postgres use la zona horaria internamente
+    command: -c timezone='America/Bogota'
     environment:
+      TZ: "America/Bogota" # Corregido
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: gym_admin
     volumes:
       - pgdata:/var/lib/postgresql/data
-    # sin ports para no chocar con el Postgres del host
     ports:
       - "55432:5432" 
-    restart: unless-stopped
+    restart: always
 
 volumes:
   pgdata:

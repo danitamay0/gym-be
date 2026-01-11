@@ -6,7 +6,7 @@ from app import db
 from models.index import Membresia, MembresiaCliente, Venta, DetalleVenta, Inventario, Producto
 from rebar import registry
 
-
+import pytz
 from flask import request
 from sqlalchemy import and_
 from datetime import datetime
@@ -67,6 +67,9 @@ def get_sales():
 
     return jsonify(result), 200
 
+from datetime import datetime
+import pytz
+from sqlalchemy.exc import SQLAlchemyError
 
 @registry.handles(
     rule="/sales",
@@ -75,27 +78,49 @@ def get_sales():
 def create_sale():
     data = request.get_json()
     items = data.get("items", [])
-    cliente_id = data.get("cliente_id", None)
-    metodo_pago_id = data.get("metodo_pago_id", None)
-
+    cliente_id = data.get("cliente_id")
+    metodo_pago_id = data.get("metodo_pago_id")
+    
     if not items:
         return jsonify({"error": "No hay productos en la venta"}), 400
+
+    # Definimos la zona horaria para cualquier log o cálculo extra
+    colombia_tz = pytz.timezone('America/Bogota')
 
     try:
         total = sum(item["cantidad"] * item["precio_unitario"] for item in items)
 
         # Crear la venta
+        # Nota: Si tu modelo 'Venta' ya tiene el default=get_colombia_time en la columna 'created',
+        # no necesitas pasar 'fecha' aquí. Si la columna se llama 'created', cámbiala abajo:
         venta = Venta(
             cliente_id=cliente_id,
-            fecha=datetime.utcnow(),
+            # Usamos la hora de Colombia explícitamente si prefieres no depender del default
+            created=datetime.now(colombia_tz), 
             metodo_pago_id=metodo_pago_id,
             total=total,
         )
         db.session.add(venta)
-        db.session.flush()  # para obtener venta.id
+        db.session.flush() 
 
-        # Crear detalles y actualizar inventario
         for item in items:
+            # 1. Validar inventario primero para evitar inserts innecesarios
+            inv = Inventario.query.filter_by(producto_id=item["producto_id"]).first()
+            
+            if not inv:
+                db.session.rollback()
+                return jsonify({"error": f"Producto {item['producto_id']} no existe"}), 404
+            
+            if inv.cantidad_disponible < item["cantidad"]:
+                db.session.rollback()
+                return jsonify({
+                    "error": f"Stock insuficiente para el producto {item['producto_id']}. Disponible: {inv.cantidad_disponible}"
+                }), 400
+
+            # 2. Restar inventario
+            inv.cantidad_disponible -= item["cantidad"]
+
+            # 3. Crear detalle
             detalle = DetalleVenta(
                 venta_id=venta.id,
                 producto_id=item["producto_id"],
@@ -104,26 +129,17 @@ def create_sale():
             )
             db.session.add(detalle)
 
-            # Restar del inventario
-            inv = Inventario.query.filter_by(producto_id=item["producto_id"]).first()
-            if not inv:
-                db.session.rollback()
-                return jsonify({"error": "Producto no encontrado en inventario"}), 404
-            if inv.cantidad_disponible < item["cantidad"]:
-                db.session.rollback()
-                return jsonify({
-                    "error": f"No hay suficiente inventario para el producto {item['producto_id']}"
-                }), 400
-
-            inv.cantidad_disponible -= item["cantidad"]
-
         db.session.commit()
-        return jsonify({"message": "Venta registrada correctamente", "venta_id": str(venta.id)}), 201
+        return jsonify({
+            "message": "Venta registrada correctamente", 
+            "venta_id": str(venta.id)
+        }), 201
 
     except SQLAlchemyError as e:
         db.session.rollback()
-        return jsonify({"error": "Error al registrar la venta", "details": str(e)}), 500
-
+        # Log del error para debug en consola de Docker
+        print(f"Error en Venta: {str(e)}")
+        return jsonify({"error": "Error interno al procesar la transacción", "details": str(e)}), 500
 
 from flask import request, jsonify
 from sqlalchemy import func
@@ -136,18 +152,23 @@ from datetime import datetime, timedelta, timezone
 def resumen_dashboard():
     start = request.args.get("fecha_inicio")
     end = request.args.get("fecha_fin")
-
+    colombia_tz = pytz.timezone('America/Bogota')
     # Fechas UTC-aware
     if start:
-        from_date = datetime.strptime(start, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        from_date = datetime.strptime(start, "%Y-%m-%d")
+        from_date = colombia_tz.localize(from_date)
     else:
-        from_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
+        # Inicio del día actual en Colombia
+        now_col = datetime.now(colombia_tz)
+        from_date = now_col.replace(hour=0, minute=0, second=0, microsecond=0)
 
     if end:
-        # Usamos el inicio del día siguiente como exclusivo para que fin sea inclusivo
-        to_date = datetime.strptime(end, "%Y-%m-%d").replace(tzinfo=timezone.utc) + timedelta(days=1)
+        # Fin del día: sumamos 1 día para que el "menor que" sea inclusivo hasta las 23:59:59
+        to_date = datetime.strptime(end, "%Y-%m-%d")
+        to_date = colombia_tz.localize(to_date) + timedelta(days=1)
     else:
-        to_date = datetime.utcnow().replace(tzinfo=timezone.utc)
+        # Hasta el momento exacto de ahora en Colombia
+        to_date = datetime.now(colombia_tz)
 
     # Ventas
     ventas_query = (

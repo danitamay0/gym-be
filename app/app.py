@@ -6,7 +6,7 @@ from database import db, migrate
 from api.register_all_routes import *  # noqa
 from rebar import rebar
 
-FRONT_DIST = Path(__file__).parent / "fronted" / "dist"  # <- tu build
+FRONT_DIST = Path(__file__).parent / "frontend" / "dist"  # <- tu build
 
 def create_app():
     app = Flask(

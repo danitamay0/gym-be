@@ -7,11 +7,28 @@ from sqlalchemy import Column, String, Integer, Numeric, DateTime, Date, Foreign
 from sqlalchemy.orm import relationship
 
 from sqlalchemy.ext.declarative import DeclarativeMeta
-
+import pytz
 
 BaseModel: DeclarativeMeta = db.Model
 
 from sqlalchemy.sql import func
+
+def get_colombia_time():
+    return datetime.now(pytz.timezone('America/Bogota'))
+
+class TimestampModel(BaseModel):
+    __abstract__ = True
+    # Usamos default=get_colombia_time (sin paréntesis para que se ejecute al insertar)
+    created = db.Column(db.DateTime, nullable=False, default=get_colombia_time)
+    
+    # Para el update, usamos la misma lógica
+    updated = db.Column(db.DateTime, onupdate=get_colombia_time)
+    
+    deleted_at = db.Column(db.DateTime, index=True, nullable=True)
+
+    def soft_delete(self): # Agregué 'self' que faltaba en tu código
+        self.deleted_at = get_colombia_time()
+        db.session.commit()
 
 
 class TimestampModel(BaseModel):
