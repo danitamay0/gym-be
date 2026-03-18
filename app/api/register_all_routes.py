@@ -2,7 +2,6 @@ from api.membership.routes import memberships
 from api.membership.routes import membership
 from api.membership.routes import create_membership
 from api.membership.routes import update_membership
-
 from api.client.routes import create_client
 from api.client.routes import update_client
 from api.client.routes import get_clients
@@ -22,6 +21,7 @@ from api.inventory_entry.routes import update_entry
 from api.inventory.routes import list_inventories
 
 from api.membership_client.routes import create_membresia_cliente
+from api.membership_client.routes import get_whitelist_csv_api
 from api.fingerprint.routes import verify_fingerprint
 from api.fingerprint.routes import register_fingerprint
 

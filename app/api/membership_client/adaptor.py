@@ -1,7 +1,9 @@
 
-from flask import jsonify, request
-from models.index import MembresiaCliente, Membresia, Cliente
+from flask import jsonify, request, Response
+from models.index import MembresiaCliente, Membresia, Cliente, Fingerprint
 from database import db
+import pytz
+from datetime import datetime
 
 def get_memberships_client(id):
     """
@@ -61,3 +63,43 @@ def get_memberships():
         })
     
     return jsonify(result)
+
+
+def get_whitelist_csv():
+    """
+    Retorna CSV con IDs de huellas (slots) de clientes con membresía ACTIVA.
+    Ejemplo output: "1,5,20,44,299"
+    """
+    try:
+        # 1. Obtener fecha actual en Colombia (para coincidir con tu lógica de modelos)
+        bogota_tz = pytz.timezone('America/Bogota')
+        today = datetime.now(bogota_tz).date()
+
+        # 2. Consulta Optimizada
+        # Seleccionamos solo el template_id (slot del sensor)
+        # Hacemos JOIN implícito al filtrar por relaciones
+        valid_slots = db.session.query(Fingerprint.template_id)\
+            .join(Cliente, Fingerprint.user_id == Cliente.id)\
+            .join(MembresiaCliente, Cliente.id == MembresiaCliente.cliente_id)\
+            .filter(
+                # Que la membresía esté marcada como activa
+                MembresiaCliente.active == True,
+                # Que no esté borrada (Soft Delete check)
+                MembresiaCliente.deleted_at == None,
+                # Que la fecha actual esté dentro del rango
+                MembresiaCliente.fecha_inicio <= today,
+                MembresiaCliente.fecha_fin >= today
+            ).all()
+
+        # valid_slots será una lista de tuplas: [(1,), (5,), (10,)]
+        
+        # 3. Aplanar lista y convertir a CSV
+        # Usamos set() para evitar duplicados si un cliente tiene 2 membresías activas por error
+        ids_list = [str(slot[0]) for slot in valid_slots]
+        csv_response = ",".join(set(ids_list))
+        
+        return Response(csv_response, mimetype='text/plain', status=200)
+
+    except Exception as e:
+        print(f"Error generando whitelist: {str(e)}")
+        return Response("Error interno", status=500)

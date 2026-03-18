@@ -135,10 +135,18 @@ class MembresiaCliente(TimestampModel):
 
     @property
     def active_membership(self):
-        current_date = datetime.utcnow().date()
+        bogota_tz = pytz.timezone('America/Bogota')
+        current_date_colombia = datetime.now(bogota_tz).date()  
+        # Logs para depuración (opcionales)
+        print(f"--- VALIDANDO MEMBRESÍA ---")
+        print(f"Cliente ID: {self.cliente_id}")
+        print(f"Rango Membresía: {self.fecha_inicio} al {self.fecha_fin}")
+        print(f"Fecha COL (Correcta):   {current_date_colombia}")
         print(f"Checking active membership for {self.cliente_id} from {self.fecha_inicio} to {self.fecha_fin}")
-        print(f"Current date: {current_date}")
-        return self.fecha_inicio <= current_date <= self.fecha_fin
+        print(f"Current date: {current_date_colombia}")
+        if not self.fecha_inicio or not self.fecha_fin:
+            return False
+        return self.fecha_inicio <= current_date_colombia <= self.fecha_fin
 class EvaluacionCliente(TimestampModel):
     __tablename__ = "evaluacion_cliente"
     query_class = SoftDeleteQuery

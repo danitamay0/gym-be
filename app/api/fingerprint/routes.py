@@ -38,6 +38,7 @@ def verify_fingerprint(template_id):
         m.active_membership and m.deleted_at is None  # Solo considerar membresías activas y no eliminadas
         for m in cliente.membresias_cliente if m.active  # Solo considerar membresías activas
     )
+    print(f"Membership active: {membresia_activa}")
 
     if membresia_activa:
         return jsonify({"authorized": True, "user_id": str(cliente.id)})

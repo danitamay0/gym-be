@@ -4,7 +4,8 @@ import flask_rebar
 from api.membership_client.adaptor import (
     add_membership_client,
     get_memberships,
-    get_memberships_client
+    get_memberships_client,
+    get_whitelist_csv
 )
 from api.membership_client.schemas import MembershipClientSchema, MembershipClientCreateSchema
 
@@ -39,3 +40,7 @@ def delete_membership_client(id: UUID):
 
     membership.soft_delete()
     return {"message": "membership deleted successfully"}, 200
+
+@registry.handles(rule='/whitelist-csv', method='GET')
+def get_whitelist_csv_api():
+    return get_whitelist_csv()
